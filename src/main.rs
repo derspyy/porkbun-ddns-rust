@@ -2,26 +2,24 @@ use serde::{Deserialize, Serialize};
 use serde_json::Value;
 use std::fs;
 use std::path::Path;
-use toml;
+
 use ureq::Agent;
 
 const ENDPOINT: &str = "https://porkbun.com/api/json/v3";
 
 fn main() {
     let config_path = Path::new("config.toml");
-    let config: Config;
-    match config_path.exists() {
+    let config: Config = match config_path.exists() {
         true => {
-            let data = fs::read_to_string(&config_path).unwrap();
-            config = toml::from_str(&data).unwrap();
+            let data = fs::read_to_string(config_path).unwrap();
+            toml::from_str(&data).unwrap()
         }
         false => {
-            config = Config::default();
-            let data = toml::to_string_pretty(&config).unwrap();
-            fs::write(&config_path, &data).unwrap();
+            let data = toml::to_string_pretty(&Config::default()).unwrap();
+            fs::write(config_path, data).unwrap();
             return;
         }
-    }
+    };
 
     let agent = Agent::new();
 
@@ -47,15 +45,14 @@ fn main() {
         }
     }
 
-    let full_domain: String;
-    match config.domain.subdomain.is_empty() {
+    let full_domain = match config.domain.subdomain.is_empty() {
         true => {
-            full_domain = config.domain.base.clone();
+            config.domain.base.clone()
         }
         false => {
-            full_domain = format!("{}.{}", config.domain.subdomain, &config.domain.base);
+            format!("{}.{}", config.domain.subdomain, &config.domain.base)
         }
-    }
+    };
 
     let record_type = match config.ip.ipv6 {
         true => "AAAA",
@@ -100,7 +97,7 @@ fn main() {
             .unwrap()
             .into_json()
             .unwrap();
-        if let Some(_) = delete_response["status"].as_str() {
+        if delete_response["status"].as_str().is_some() {
             println!("Deleting existing {} record", &record_type);
         } else {
             println!("Couldn't delete record.");
