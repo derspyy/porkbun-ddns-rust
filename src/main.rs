@@ -65,15 +65,15 @@ fn main() {
     let mut record = None;
     let mut ttl = None;
     let mut prio = None;
+    let mut notes = None;
 
     let records_endpoint = format!("{}/dns/retrieve/{}", ENDPOINT, &config.domain.base);
-    let records_data = agent
+    let records_response: RecordsResponse = agent
         .post(&records_endpoint)
         .send_json(&config.keys)
         .unwrap()
-        .into_string()
+        .into_json()
         .unwrap();
-    let records_response: RecordsResponse = serde_json::from_str(&records_data).unwrap();
     if records_response.status.as_str() != "SUCCESS" {
         println!("Couldn't retrieve records");
         return;
@@ -81,11 +81,18 @@ fn main() {
     for x in records_response.records {
         if x.name.as_str() == full_domain {
             record = Some(x);
-            break
+            break;
         }
     }
 
     if let Some(x) = record {
+        if x.content == ip {
+            println!(
+                "Existing {} record already matches answer {}",
+                record_type, &ip
+            );
+            return;
+        }
         let delete_endpoint = format!("{}/dns/delete/{}/{}", ENDPOINT, &config.domain.base, x.id);
         let delete_response: Value = agent
             .post(&delete_endpoint)
@@ -99,8 +106,9 @@ fn main() {
             println!("Couldn't delete record.");
             return;
         }
-        ttl = Some(x.ttl);
-        prio = Some(x.prio);
+        ttl = x.ttl;
+        prio = x.prio;
+        notes = x.notes;
     } else {
         println!("No record to be deleted.")
     }
@@ -109,11 +117,12 @@ fn main() {
     let create_body = CreateRecord {
         secretapikey: config.keys.secretapikey,
         apikey: config.keys.apikey,
-        name: full_domain.clone(),
+        name: config.domain.subdomain,
         _type: String::from(record_type),
         content: String::from(&ip),
-        ttl: ttl,
-        prio: prio,
+        ttl,
+        prio,
+        notes,
     };
     let create_response: Value = agent
         .post(&create_endpoint)
@@ -166,8 +175,10 @@ struct Record {
     name: String,
     #[serde(rename = "type")]
     _type: String,
-    ttl: String,
-    prio: String,
+    content: String,
+    ttl: Option<String>,
+    prio: Option<String>,
+    notes: Option<String>,
 }
 
 #[derive(Serialize)]
@@ -180,4 +191,5 @@ struct CreateRecord {
     content: String,
     ttl: Option<String>,
     prio: Option<String>,
+    notes: Option<String>,
 }
