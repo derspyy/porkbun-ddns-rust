@@ -6,6 +6,7 @@ use std::path::Path;
 use ureq::Agent;
 
 const ENDPOINT: &str = "https://porkbun.com/api/json/v3";
+const ENDPOINT_IPV4: &str = "https://api-ipv4.porkbun.com/api/json/v3";
 
 fn main() {
     let config_path = Path::new("config.toml");
@@ -26,7 +27,10 @@ fn main() {
     let ip: String;
     match config.ip.address.is_empty() {
         true => {
-            let ping_endpoint = format!("{}/ping", ENDPOINT);
+            let ping_endpoint = match config.ip.ipv6 {
+                true => format!("{}/ping", ENDPOINT),
+                false => format!("{}/ping", ENDPOINT_IPV4),
+            };
             let ping_response: Value = agent
                 .post(&ping_endpoint)
                 .send_json(&config.keys)
