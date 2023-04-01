@@ -18,6 +18,9 @@ jobs:
             archive: zip
     steps:
       - uses: actions/checkout@master
+      - uses: rui314/setup-mold@v1
+      - name: Rust Cache
+        uses: Swatinem/rust-cache@v2.2.1
       - name: Compile and release
         uses: rust-build/rust-build.action@v1.4.3
         env:
