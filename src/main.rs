@@ -1,7 +1,7 @@
 use serde::{Deserialize, Serialize};
 use serde_json::Value;
-use std::fs;
 use std::path::Path;
+use std::{env, fs};
 
 use ureq::Agent;
 
@@ -24,6 +24,11 @@ fn main() {
 
     let agent = Agent::new();
 
+    let keys = match config.keys {
+        Some(x) => x,
+        None => get_env().expect("Couldn't get environment variables"),
+    };
+
     let ip: String;
     match config.ip.address.is_empty() {
         true => {
@@ -33,7 +38,7 @@ fn main() {
             };
             let ping_response: Value = agent
                 .post(&ping_endpoint)
-                .send_json(&config.keys)
+                .send_json(&keys)
                 .unwrap()
                 .into_json()
                 .unwrap();
@@ -50,9 +55,7 @@ fn main() {
     }
 
     let full_domain = match config.domain.subdomain.is_empty() {
-        true => {
-            config.domain.base.clone()
-        }
+        true => config.domain.base.clone(),
         false => {
             format!("{}.{}", config.domain.subdomain, &config.domain.base)
         }
@@ -71,7 +74,7 @@ fn main() {
     let records_endpoint = format!("{}/dns/retrieve/{}", ENDPOINT, &config.domain.base);
     let records_response: RecordsResponse = agent
         .post(&records_endpoint)
-        .send_json(&config.keys)
+        .send_json(&keys)
         .unwrap()
         .into_json()
         .unwrap();
@@ -97,7 +100,7 @@ fn main() {
         let delete_endpoint = format!("{}/dns/delete/{}/{}", ENDPOINT, &config.domain.base, x.id);
         let delete_response: Value = agent
             .post(&delete_endpoint)
-            .send_json(&config.keys)
+            .send_json(&keys)
             .unwrap()
             .into_json()
             .unwrap();
@@ -116,8 +119,8 @@ fn main() {
 
     let create_endpoint = format!("{}/dns/create/{}", ENDPOINT, &config.domain.base);
     let create_body = CreateRecord {
-        secretapikey: config.keys.secretapikey,
-        apikey: config.keys.apikey,
+        secretapikey: keys.secretapikey,
+        apikey: keys.apikey,
         name: config.domain.subdomain,
         _type: String::from(record_type),
         content: String::from(&ip),
@@ -127,7 +130,7 @@ fn main() {
     };
     let create_response: Value = agent
         .post(&create_endpoint)
-        .send_json(&create_body)
+        .send_json(create_body)
         .unwrap()
         .into_json()
         .unwrap();
@@ -141,9 +144,16 @@ fn main() {
     }
 }
 
+fn get_env() -> Result<Keys, env::VarError> {
+    Ok(Keys {
+        secretapikey: env::var("PORKBUN_SECRET_API_KEY")?,
+        apikey: env::var("PORKBUN_API_KEY")?,
+    })
+}
+
 #[derive(Serialize, Deserialize, Default)]
 struct Config {
-    keys: Keys,
+    keys: Option<Keys>,
     domain: Domain,
     ip: Ip,
 }
