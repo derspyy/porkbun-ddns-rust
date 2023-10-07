@@ -66,12 +66,14 @@ fn main() {
         false => "A",
     };
 
-    let mut record = None;
     let mut ttl = None;
     let mut prio = None;
     let mut notes = None;
 
-    let records_endpoint = format!("{}/dns/retrieve/{}", ENDPOINT, &config.domain.base);
+    let records_endpoint = format!(
+        "{}/dns/retrieveByNameType/{}/{}/{}",
+        ENDPOINT, &config.domain.base, record_type, &config.domain.subdomain
+    );
     let records_response: RecordsResponse = agent
         .post(&records_endpoint)
         .send_json(&keys)
@@ -82,12 +84,8 @@ fn main() {
         println!("Couldn't retrieve records");
         return;
     }
-    for x in records_response.records {
-        if x.name.as_str() == full_domain {
-            record = Some(x);
-            break;
-        }
-    }
+
+    let record = records_response.records.get(0);
 
     if let Some(x) = record {
         if x.content == ip {
@@ -110,9 +108,9 @@ fn main() {
             println!("Couldn't delete record.");
             return;
         }
-        ttl = x.ttl;
-        prio = x.prio;
-        notes = x.notes;
+        ttl = x.ttl.clone();
+        prio = x.prio.clone();
+        notes = x.notes.clone();
     } else {
         println!("No record to be deleted.")
     }
@@ -183,7 +181,6 @@ struct RecordsResponse {
 #[derive(Deserialize)]
 struct Record {
     id: String,
-    name: String,
     #[serde(rename = "type")]
     _type: String,
     content: String,
