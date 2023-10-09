@@ -30,14 +30,14 @@ fn main() {
     };
 
     let ip: String;
+    let endpoint: &str = match config.ip.ipv6 {
+        true => ENDPOINT,
+        false => ENDPOINT_IPV4,
+    };
     match config.ip.address.is_empty() {
         true => {
-            let ping_endpoint = match config.ip.ipv6 {
-                true => format!("{}/ping", ENDPOINT),
-                false => format!("{}/ping", ENDPOINT_IPV4),
-            };
             let ping_response: Value = agent
-                .post(&ping_endpoint)
+                .post(&format!("{}/ping", endpoint))
                 .send_json(&keys)
                 .unwrap()
                 .into_json()
@@ -72,7 +72,7 @@ fn main() {
 
     let records_endpoint = format!(
         "{}/dns/retrieveByNameType/{}/{}/{}",
-        ENDPOINT, &config.domain.base, record_type, &config.domain.subdomain
+        endpoint, &config.domain.base, record_type, &config.domain.subdomain
     );
     let records_response: RecordsResponse = agent
         .post(&records_endpoint)
@@ -95,7 +95,7 @@ fn main() {
             );
             return;
         }
-        let delete_endpoint = format!("{}/dns/delete/{}/{}", ENDPOINT, &config.domain.base, x.id);
+        let delete_endpoint = format!("{}/dns/delete/{}/{}", endpoint, &config.domain.base, x.id);
         let delete_response: Value = agent
             .post(&delete_endpoint)
             .send_json(&keys)
@@ -115,7 +115,7 @@ fn main() {
         println!("No record to be deleted.")
     }
 
-    let create_endpoint = format!("{}/dns/create/{}", ENDPOINT, &config.domain.base);
+    let create_endpoint = format!("{}/dns/create/{}", endpoint, &config.domain.base);
     let create_body = CreateRecord {
         secretapikey: keys.secretapikey,
         apikey: keys.apikey,
