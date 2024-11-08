@@ -5,7 +5,7 @@ use std::{env, fs};
 
 use ureq::Agent;
 
-const ENDPOINT: &str = "https://porkbun.com/api/json/v3";
+const ENDPOINT: &str = "https://api.porkbun.com/api/json/v3";
 const ENDPOINT_IPV4: &str = "https://api-ipv4.porkbun.com/api/json/v3";
 
 fn main() {
